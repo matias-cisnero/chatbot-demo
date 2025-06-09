@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Chat con LM Studio</title>
+  <style>
+    body { font-family: sans-serif; margin: 0; padding: 0; background: #f0f0f0; }
+    #chat { max-width: 600px; margin: 20px auto; padding: 20px; background: white; border-radius: 10px; box-shadow: 0 0 10px #ccc; }
+    .message { margin-bottom: 10px; }
+    .user { color: blue; }
+    .assistant { color: green; }
+    input, button { padding: 10px; margin-top: 10px; width: 100%; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <div id="chat">
+    <div id="messages"></div>
+    <input type="text" id="userInput" placeholder="Escribí tu mensaje..." />
+    <button onclick="sendMessage()">Enviar</button>
+  </div>
+
+  <script>
+    const messagesDiv = document.getElementById('messages');
+    const userInput = document.getElementById('userInput');
+
+    let chatHistory = [
+      { role: "system", content: "Sos un asistente útil que responde en español." }
+    ];
+
+    function appendMessage(role, content) {
+      const div = document.createElement('div');
+      div.className = 'message ' + role;
+      div.innerHTML = `<strong>${role}:</strong> ${content}`;
+      messagesDiv.appendChild(div);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const content = userInput.value.trim();
+      if (!content) return;
+
+      appendMessage("user", content);
+      chatHistory.push({ role: "user", content });
+
+      userInput.value = "Pensando...";
+
+      try {
+        const response = await fetch("http://192.168.172.90:1234/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "local-model",  // nombre genérico
+            messages: chatHistory,
+            temperature: 0.7
+          })
+        });
+
+        const data = await response.json();
+        const reply = data.choices[0].message.content;
+        chatHistory.push({ role: "assistant", content: reply });
+        appendMessage("assistant", reply);
+      } catch (err) {
+        appendMessage("assistant", "Error al conectar con LM Studio.");
+        console.error(err);
+      } finally {
+        userInput.value = "";
+      }
+    }
+
+    userInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
+  </script>
+</body>
+</html>
